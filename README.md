@@ -1,6 +1,32 @@
 # CloudLamma - Secure Ollama Setup Tool
 
-A robust Python script that simplifies setting up and exposing Ollama with enterprise-grade security features. CloudLamma automatically installs Ollama and cloudflared, manages models, and creates secure tunnels with comprehensive error handling and retry logic.
+**Quick, free LLM deployment for rapid prototyping and experimentation.**
+
+CloudLamma was created to solve a simple problem: I wanted a tool that could quickly spin up a local LLM using Ollama and expose it to the internet via Cloudflare tunnels - all for free. Whether you're prototyping AI applications, testing models, or need temporary LLM access, CloudLamma lets you deploy and tear down language models in minutes without any hosting costs.
+
+This robust Python script automatically installs Ollama and cloudflared, manages models, and creates secure tunnels with enterprise-grade security features and comprehensive error handling.
+
+## Why CloudLamma?
+
+**The Problem:** Setting up LLMs for quick testing or temporary projects often involves:
+- Complex cloud provider setup and billing
+- Expensive GPU instances that run 24/7
+- Time-consuming configuration for internet access
+- Manual teardown processes that waste money
+
+**The Solution:** CloudLamma provides:
+- **Zero hosting costs** - Uses your local hardware + free Cloudflare tunnels
+- **Rapid deployment** - From zero to accessible LLM in under 5 minutes
+- **Easy teardown** - Simple Ctrl+C to stop and clean up everything
+- **Internet accessibility** - Secure HTTPS endpoints for testing webhooks, APIs, or sharing
+- **Multiple models** - Switch between different LLMs without cloud migration
+
+**Perfect for:**
+- AI application prototyping and development
+- Testing different models before committing to cloud hosting
+- Temporary demos and presentations
+- Educational projects and experimentation
+- Cost-conscious development workflows
 
 ## Features
 
@@ -41,6 +67,8 @@ A robust Python script that simplifies setting up and exposing Ollama with enter
 
 ## Quick Start
 
+**Get from zero to internet-accessible LLM in under 5 minutes:**
+
 ### Installation
 
 1. **Clone the repository:**
@@ -54,31 +82,41 @@ A robust Python script that simplifies setting up and exposing Ollama with enter
    pip install requests
    ```
 
-3. **Make executable:**
+3. **Deploy everything with one command:**
    ```bash
    chmod +x cloudlamma.py
+   ./cloudlamma.py --yes
    ```
 
-### Basic Usage
+That's it! CloudLamma will:
+- Install Ollama and cloudflared automatically
+- Download the default model (llama3)
+- Start the services
+- Create a secure Cloudflare tunnel
+- Give you an HTTPS URL to access your LLM
 
-**Setup and start tunnel (default):**
+### Quick Commands
+
+**Deploy with auto-install:**
 ```bash
-./cloudlamma.py
+./cloudlamma.py --yes
 ```
 
-**Pull a specific model:**
+**Test a different model:**
 ```bash
-./cloudlamma.py --pull llama3
+./cloudlamma.py --pull codellama
+./cloudlamma.py --yes  # Restart tunnel with new model
 ```
 
-**Run a model interactively:**
-```bash
-./cloudlamma.py --run llama3
-```
-
-**Check installation status:**
+**Quick status check:**
 ```bash
 ./cloudlamma.py --check
+```
+
+**Stop everything:**
+```bash
+# Just press Ctrl+C in the terminal running CloudLamma
+# Everything stops and cleans up automatically
 ```
 
 ## Detailed Usage
