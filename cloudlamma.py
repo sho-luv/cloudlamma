@@ -91,6 +91,32 @@ class OllamaSetup:
         }
         print(f"{prefix.get(level, prefix['info'])} {message}")
 
+    def validate_model_name(self, model_name: str) -> bool:
+        """Validate model name to prevent command injection and ensure reasonable format"""
+        if not model_name or not isinstance(model_name, str):
+            return False
+        
+        # Check for dangerous characters that could be used for command injection
+        dangerous_chars = [';', '&', '|', '`', '$', '(', ')', '<', '>', '"', "'", '\\', '\n', '\r']
+        if any(char in model_name for char in dangerous_chars):
+            return False
+        
+        # Model names should be reasonable (alphanumeric, dots, dashes, underscores, colons for tags)
+        if not re.match(r'^[a-zA-Z0-9._:-]+$', model_name):
+            return False
+        
+        # Reasonable length limits
+        if len(model_name) > 100:
+            return False
+            
+        return True
+
+    def sanitize_model_name(self, model_name: str) -> str:
+        """Sanitize and validate model name, raising ValueError if invalid"""
+        if not self.validate_model_name(model_name):
+            raise ValueError(f"Invalid model name: '{model_name}'. Model names must contain only letters, numbers, dots, dashes, underscores, and colons.")
+        return model_name.strip()
+
     def is_installed(self, command: str) -> bool:
         """Check if a command is installed"""
         return shutil.which(command) is not None
@@ -279,6 +305,12 @@ class OllamaSetup:
 
     def pull_model(self, model_name: str) -> None:
         """Pull a specific model from Ollama's model hub"""
+        try:
+            model_name = self.sanitize_model_name(model_name)
+        except ValueError as e:
+            self.print_message(str(e), "error")
+            return
+            
         self.print_message(f"Pulling model: {model_name}...")
         
         # Ensure Ollama is running before pulling
@@ -332,6 +364,12 @@ class OllamaSetup:
 
     def run_model(self, model_name: str) -> None:
         """Run a specific model in interactive mode"""
+        try:
+            model_name = self.sanitize_model_name(model_name)
+        except ValueError as e:
+            self.print_message(str(e), "error")
+            return
+            
         self.print_message(f"Running model: {model_name}...")
         
         # Ensure Ollama is running
