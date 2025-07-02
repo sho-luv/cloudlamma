@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 # Try to import requests, provide helpful error if missing
@@ -22,13 +23,41 @@ except ImportError:
     print("Please install it with: pip install requests")
     sys.exit(1)
 
-# Constants
-OLLAMA_PORT = 11434
-DEFAULT_MODEL = "llama3"
-GREEN = "\033[92m"
-YELLOW = "\033[93m"
-RED = "\033[91m"
-RESET = "\033[0m"
+@dataclass
+class Config:
+    """Configuration settings for OllamaSetup"""
+    # Network settings
+    ollama_port: int = 11434
+    default_model: str = "llama3"
+    
+    # Timeout settings (in seconds)
+    install_timeout: int = 300
+    update_timeout: int = 120
+    download_timeout: int = 120
+    service_timeout: int = 60
+    api_timeout: int = 30
+    health_check_timeout: int = 5
+    
+    # Retry settings
+    max_retries: int = 3
+    retry_delay: float = 1.0
+    retry_backoff: float = 2.0
+    
+    # Service startup settings
+    ollama_startup_wait: int = 30  # seconds
+    tunnel_url_wait: int = 30      # seconds
+    
+    # Model validation
+    max_model_name_length: int = 100
+    
+    # Colors for output
+    green: str = "\033[92m"
+    yellow: str = "\033[93m"
+    red: str = "\033[91m"
+    reset: str = "\033[0m"
+
+# Global config instance
+config = Config()
 
 
 class OllamaSetup:
@@ -58,16 +87,16 @@ class OllamaSetup:
         parser.add_argument(
             "--pull",
             metavar="MODEL",
-            help=f"Pull a specific model (default: {DEFAULT_MODEL})",
+            help=f"Pull a specific model (default: {config.default_model})",
             nargs="?",
-            const=DEFAULT_MODEL,
+            const=config.default_model,
         )
         parser.add_argument(
             "--run",
             metavar="MODEL",
-            help=f"Run a specific model (default: {DEFAULT_MODEL})",
+            help=f"Run a specific model (default: {config.default_model})",
             nargs="?",
-            const=DEFAULT_MODEL,
+            const=config.default_model,
         )
         parser.add_argument(
             "--list-models",
@@ -84,10 +113,10 @@ class OllamaSetup:
     def print_message(self, message: str, level: str = "info") -> None:
         """Print formatted messages"""
         prefix = {
-            "info": f"{GREEN}[+]{RESET}",
-            "warn": f"{YELLOW}[!]{RESET}",
-            "error": f"{RED}[!]{RESET}",
-            "question": f"{YELLOW}[?]{RESET}",
+            "info": f"{config.green}[+]{config.reset}",
+            "warn": f"{config.yellow}[!]{config.reset}",
+            "error": f"{config.red}[!]{config.reset}",
+            "question": f"{config.yellow}[?]{config.reset}",
         }
         print(f"{prefix.get(level, prefix['info'])} {message}")
 
@@ -106,7 +135,7 @@ class OllamaSetup:
             return False
         
         # Reasonable length limits
-        if len(model_name) > 100:
+        if len(model_name) > config.max_model_name_length:
             return False
             
         return True
@@ -117,8 +146,12 @@ class OllamaSetup:
             raise ValueError(f"Invalid model name: '{model_name}'. Model names must contain only letters, numbers, dots, dashes, underscores, and colons.")
         return model_name.strip()
 
-    def retry_operation(self, operation, max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
+    def retry_operation(self, operation, max_retries: int = None, delay: float = None, backoff: float = None):
         """Retry an operation with exponential backoff"""
+        max_retries = max_retries or config.max_retries
+        delay = delay or config.retry_delay
+        backoff = backoff or config.retry_backoff
+        
         for attempt in range(max_retries):
             try:
                 return operation()
@@ -144,9 +177,9 @@ class OllamaSetup:
         self.print_message("Installing Ollama...")
         try:
             if self.is_installed("brew"):
-                subprocess.run(["brew", "install", "ollama"], check=True, timeout=300)
+                subprocess.run(["brew", "install", "ollama"], check=True, timeout=config.install_timeout)
             elif self.is_installed("apt"):
-                subprocess.run(["sudo", "apt", "update"], check=True, timeout=120)
+                subprocess.run(["sudo", "apt", "update"], check=True, timeout=config.update_timeout)
                 self.print_message(
                     "Ollama is not available in the default apt repositories. "
                     "Installing via install script...",
@@ -156,9 +189,9 @@ class OllamaSetup:
                     ["curl", "-fsSL", "https://ollama.com/install.sh"],
                     capture_output=True,
                     check=True,
-                    timeout=60
+                    timeout=config.download_timeout
                 ).stdout.decode()
-                subprocess.run(["sh"], input=install_script, text=True, check=True, timeout=300)
+                subprocess.run(["sh"], input=install_script, text=True, check=True, timeout=config.install_timeout)
             else:
                 self.print_message(
                     "Unsupported package manager. Please install Ollama manually from https://ollama.com/",
@@ -187,12 +220,12 @@ class OllamaSetup:
         self.print_message("Installing cloudflared...")
         try:
             if self.is_installed("brew"):
-                subprocess.run(["brew", "install", "cloudflared"], check=True, timeout=300)
+                subprocess.run(["brew", "install", "cloudflared"], check=True, timeout=config.install_timeout)
             elif self.is_installed("apt"):
-                subprocess.run(["sudo", "apt", "update"], check=True, timeout=120)
+                subprocess.run(["sudo", "apt", "update"], check=True, timeout=config.update_timeout)
                 
                 # Determine architecture for correct package
-                arch = subprocess.check_output(["uname", "-m"], timeout=10).decode().strip()
+                arch = subprocess.check_output(["uname", "-m"], timeout=config.health_check_timeout).decode().strip()
                 url = self._get_cloudflared_url(arch)
                 if not url:
                     self.print_message(
@@ -202,8 +235,8 @@ class OllamaSetup:
                     )
                     sys.exit(1)
 
-                subprocess.run(["curl", "-L", "--output", "cloudflared.deb", url], check=True, timeout=120)
-                subprocess.run(["sudo", "dpkg", "-i", "cloudflared.deb"], check=True, timeout=60)
+                subprocess.run(["curl", "-L", "--output", "cloudflared.deb", url], check=True, timeout=config.download_timeout)
+                subprocess.run(["sudo", "dpkg", "-i", "cloudflared.deb"], check=True, timeout=config.service_timeout)
                 self._setup_cloudflared_config()
             else:
                 self.print_message(
@@ -260,14 +293,14 @@ class OllamaSetup:
             f.write("tunnel: ollama-tunnel\n")
             f.write("credentials-file: ~/.cloudflared/ollama-tunnel.json\n")
             f.write("ingress:\n")
-            f.write("  - service: http://localhost:11434\n")
+            f.write(f"  - service: http://localhost:{config.ollama_port}\n")
         
         subprocess.run(["sudo", "cloudflared", "service", "install"], check=True)
 
     def is_ollama_running(self) -> bool:
         """Check if Ollama is currently running on the configured port"""
         result = subprocess.run(
-            ["lsof", "-i", f":{OLLAMA_PORT}"],
+            ["lsof", "-i", f":{config.ollama_port}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL
         )
@@ -280,7 +313,7 @@ class OllamaSetup:
         
         try:
             def check_health():
-                response = requests.get(f"http://localhost:{OLLAMA_PORT}/api/tags", timeout=5)
+                response = requests.get(f"http://localhost:{config.ollama_port}/api/tags", timeout=config.health_check_timeout)
                 return response.status_code == 200
             
             return self.retry_operation(check_health, max_retries=2, delay=0.5)
@@ -299,7 +332,7 @@ class OllamaSetup:
             )
             
             # Wait for Ollama to be responsive
-            for attempt in range(30):  # 30 seconds timeout
+            for attempt in range(config.ollama_startup_wait):  # configurable timeout
                 if self.is_ollama_responsive():
                     self.print_message("Ollama is now ready.")
                     return
@@ -317,7 +350,7 @@ class OllamaSetup:
             
         try:
             process = subprocess.Popen(
-                ["cloudflared", "tunnel", "--config", temp_config_path, "--url", f"http://localhost:{OLLAMA_PORT}"],
+                ["cloudflared", "tunnel", "--config", temp_config_path, "--url", f"http://localhost:{config.ollama_port}"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True
@@ -325,7 +358,7 @@ class OllamaSetup:
 
             # Wait for the tunnel URL to be printed
             tunnel_url = None
-            for _ in range(30):  # timeout after 30 seconds
+            for _ in range(config.tunnel_url_wait):  # configurable timeout
                 if process.poll() is not None:
                     self.print_message("Cloudflared process terminated unexpectedly", "error")
                     break
@@ -344,7 +377,7 @@ class OllamaSetup:
                 
             if tunnel_url:
                 print()  # Add space above URL
-                self.print_message(f"Temporary tunnel URL: {YELLOW}{tunnel_url}{RESET}")
+                self.print_message(f"Temporary tunnel URL: {config.yellow}{tunnel_url}{config.reset}")
                 print("\nTunnel is now active. Press Ctrl+C to stop.\n")
                 try:
                     while True:
@@ -383,10 +416,10 @@ class OllamaSetup:
                 return requests.get(
                     "https://api.cloudflare.com/client/v4/zones", 
                     headers=headers,
-                    timeout=30
+                    timeout=config.api_timeout
                 )
             
-            response = self.retry_operation(make_request, max_retries=3)
+            response = self.retry_operation(make_request)
             
             if response.status_code == 401:
                 self.print_message(
@@ -570,14 +603,14 @@ class OllamaSetup:
         models = self.get_installed_models()
         
         if not models:
-            self.print_message(f"No models found. Pulling default model ({DEFAULT_MODEL})...")
-            self.pull_model(DEFAULT_MODEL)
+            self.print_message(f"No models found. Pulling default model ({config.default_model})...")
+            self.pull_model(config.default_model)
         else:
             self.print_message(f"Found {len(models)} installed models: {', '.join(models)}")
 
     def prompt_for_confirmation(self, message: str) -> bool:
         """Prompt user for confirmation"""
-        response = input(f"{YELLOW}[?]{RESET} {message} [Y/n]: ").strip().lower()
+        response = input(f"{config.yellow}[?]{config.reset} {message} [Y/n]: ").strip().lower()
         return response in ("", "y", "yes")
 
     def run(self) -> None:
@@ -676,5 +709,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")
     except Exception as e:
-        print(f"{RED}[!]{RESET} An error occurred: {e}")
+        print(f"{config.red}[!]{config.reset} An error occurred: {e}")
         sys.exit(1)
