@@ -1,262 +1,172 @@
-# CloudLamma - Secure Ollama Setup Tool
+# CloudLamma
+
+![License](https://img.shields.io/github/license/sho-luv/cloudlamma)
+![Python](https://img.shields.io/badge/python-3.7%2B-blue)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
 
 **Quick, free LLM deployment for rapid prototyping and experimentation.**
 
-CloudLamma was created to solve a simple problem: I wanted a tool that could quickly spin up a local LLM using Ollama and expose it to the internet via Cloudflare tunnels - all for free. Whether you're prototyping AI applications, testing models, or need temporary LLM access, CloudLamma lets you deploy and tear down language models in minutes without any hosting costs.
+CloudLamma lets you spin up a local LLM using Ollama and expose it to the internet via Cloudflare tunnels - all for free. Deploy and tear down language models in under 5 minutes without any hosting costs.
 
-This robust Python script automatically installs Ollama and cloudflared, manages models, and creates secure tunnels with enterprise-grade security features and comprehensive error handling.
+🚀 **Zero to internet-accessible LLM in under 5 minutes**  
+💰 **Zero hosting costs** - uses local hardware + free Cloudflare tunnels  
+🔒 **Enterprise-grade security** with input validation and secure file handling  
+⚡ **One-command deployment** with automatic installation and configuration
+
+## Table of Contents
+[Installation](#installation) • [Quick Start](#quick-start) • [Usage](#usage) • [Configuration](#configuration) • [Security](#security-features) • [Contributing](#contributing)
 
 ## Why CloudLamma?
 
-**The Problem:** Setting up LLMs for quick testing or temporary projects often involves:
-- Complex cloud provider setup and billing
-- Expensive GPU instances that run 24/7
-- Time-consuming configuration for internet access
-- Manual teardown processes that waste money
+Traditional LLM deployment for testing involves expensive cloud instances and complex setup. CloudLamma solves this by using your local hardware with free Cloudflare tunnels.
 
-**The Solution:** CloudLamma provides:
-- **Zero hosting costs** - Uses your local hardware + free Cloudflare tunnels
-- **Rapid deployment** - From zero to accessible LLM in under 5 minutes
-- **Easy teardown** - Simple Ctrl+C to stop and clean up everything
-- **Internet accessibility** - Secure HTTPS endpoints for testing webhooks, APIs, or sharing
-- **Multiple models** - Switch between different LLMs without cloud migration
-
-**Perfect for:**
-- AI application prototyping and development
-- Testing different models before committing to cloud hosting
-- Temporary demos and presentations
-- Educational projects and experimentation
-- Cost-conscious development workflows
+**Perfect for:** Prototyping • Model testing • Demos • Education • Cost-conscious development
 
 ## Features
 
-### Security & Reliability
-* **Input Validation:** Prevents command injection with comprehensive model name validation
-* **Secure File Handling:** Uses secure temporary files instead of predictable file names
-* **Network Resilience:** Automatic retry logic with exponential backoff for network operations
-* **Comprehensive Error Handling:** Detailed error messages with actionable suggestions
+✅ **One-command deployment** with automatic installation  
+✅ **Cross-platform support** for macOS and Linux  
+✅ **Secure tunneling** via Cloudflare with HTTPS endpoints  
+✅ **Input validation** and command injection prevention  
+✅ **Network resilience** with automatic retry logic  
+✅ **Model management** - pull, run, and switch between models  
+✅ **Health checking** ensures services are responsive  
+✅ **Clean teardown** with Ctrl+C
 
-### Installation & Management
-* **Cross-Platform Installation:** Supports brew (macOS) and apt (Ubuntu/Debian) package managers
-* **Smart Service Detection:** Health checks ensure services are responsive before proceeding
-* **Configurable Timeouts:** Customizable timeout settings for different operations
+## Installation
 
-### Model Management
-* **Automatic Model Downloads:** Downloads models from the Ollama hub with progress tracking
-* **Model Validation:** Ensures model names are safe and properly formatted
-* **Interactive Model Running:** Run models in interactive chat mode
-* **Model Listing:** View all available models on your local instance
+### Prerequisites
+- Python 3.7+ with pip
+- Internet connection
+- sudo privileges (Linux) or Homebrew (macOS)
 
-### Cloudflare Integration
-* **Secure Tunnel Creation:** Creates temporary Cloudflare tunnels with proper cleanup
-* **Domain Management:** List domains in your Cloudflare account (requires API token)
-* **Configurable Endpoints:** Customizable port and service configurations
+### Install CloudLamma
 
-### Developer-Friendly
-* **Verbose Mode:** Detailed output for debugging with `-v` flag
-* **Non-Interactive Mode:** `--yes` flag for automated deployments
-* **Status Checking:** Quick health checks for installed services
-* **Centralized Configuration:** Easy customization through configuration dataclass
+```bash
+# Clone the repository
+git clone https://github.com/sho-luv/cloudlamma.git
+cd cloudlamma
 
-## Prerequisites
+# Install dependencies
+pip install requests
 
-* **Python 3.7+** with pip
-* **Internet Connection** for downloading Ollama, cloudflared, and models
-* **sudo privileges** for package installation (Linux)
-* **Homebrew** (macOS) or **apt** (Ubuntu/Debian) package manager
+# Make executable
+chmod +x cloudlamma.py
+```
 
 ## Quick Start
 
-**Get from zero to internet-accessible LLM in under 5 minutes:**
-
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/sho-luv/cloudlamma.git
-   cd cloudlamma
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install requests
-   ```
-
-3. **Deploy everything with one command:**
-   ```bash
-   chmod +x cloudlamma.py
-   ./cloudlamma.py --yes
-   ```
-
-That's it! CloudLamma will:
-- Install Ollama and cloudflared automatically
-- Download the default model (llama3)
-- Start the services
-- Create a secure Cloudflare tunnel
-- Give you an HTTPS URL to access your LLM
-
-### Quick Commands
-
-**Deploy with auto-install:**
+### Deploy Everything (5 minutes)
 ```bash
+# One command to deploy everything
 ./cloudlamma.py --yes
 ```
 
-**Test a different model:**
-```bash
-./cloudlamma.py --pull codellama
-./cloudlamma.py --yes  # Restart tunnel with new model
-```
+CloudLamma will automatically:
+1. Install Ollama and cloudflared
+2. Download the default model (llama3)
+3. Start services and health checks
+4. Create secure Cloudflare tunnel
+5. Display your HTTPS URL
 
-**Quick status check:**
+### Common Commands
 ```bash
+# Deploy with auto-install
+./cloudlamma.py --yes
+
+# Check status
 ./cloudlamma.py --check
+
+# Use different model
+./cloudlamma.py --pull codellama
+./cloudlamma.py --yes
+
+# Stop everything
+# Press Ctrl+C (automatic cleanup)
 ```
 
-**Stop everything:**
-```bash
-# Just press Ctrl+C in the terminal running CloudLamma
-# Everything stops and cleans up automatically
-```
+## Usage
 
-## Detailed Usage
+### Command Reference
 
-### Command-Line Options
-
-| Option | Description |
-|--------|-------------|
-| `--yes` | Automatically accept all installation prompts |
-| `--check` | Check if Ollama and cloudflared are installed and running |
-| `--pull [MODEL]` | Pull a specific model (default: llama3) |
-| `--run [MODEL]` | Run a model in interactive mode (default: llama3) |
-| `--list-models` | List all available models on local Ollama instance |
-| `--list-domains` | List domains in Cloudflare account (requires API token) |
-| `-v, --verbose` | Show detailed output from cloudflared tunnel |
+| Command | Description |
+|---------|-------------|
+| `--yes` | Auto-accept installation prompts |
+| `--check` | Check installation status |
+| `--pull [MODEL]` | Download specific model |
+| `--run [MODEL]` | Run model interactively |
+| `--list-models` | Show available models |
+| `--list-domains` | Show Cloudflare domains |
+| `-v, --verbose` | Detailed output |
 
 ### Examples
 
-**Non-interactive installation:**
 ```bash
+# Full deployment
 ./cloudlamma.py --yes
-```
 
-**Pull and run a specific model:**
-```bash
-./cloudlamma.py --pull codellama
-./cloudlamma.py --run codellama
-```
-
-**Check service status:**
-```bash
-./cloudlamma.py --check
-# Output:
-# [+] Ollama installed: True
-# [+] cloudflared installed: True  
-# [+] Ollama running: True
-```
-
-**List available models:**
-```bash
+# Model management
+./cloudlamma.py --pull llama3
 ./cloudlamma.py --list-models
+
+# Status and debugging
+./cloudlamma.py --check
+./cloudlamma.py --verbose
 ```
 
 ## Configuration
 
-CloudLamma uses a centralized configuration system that you can customize by modifying the `Config` dataclass in `cloudlamma.py`:
+### Default Settings
+CloudLamma works out-of-the-box but can be customized by editing the `Config` class:
 
 ```python
-@dataclass
-class Config:
-    # Network settings
-    ollama_port: int = 11434
-    default_model: str = "llama3"
-    
-    # Timeout settings (in seconds)
-    install_timeout: int = 300
-    api_timeout: int = 30
-    health_check_timeout: int = 5
-    
-    # Retry settings
-    max_retries: int = 3
-    retry_delay: float = 1.0
-    retry_backoff: float = 2.0
+ollama_port: int = 11434          # Ollama service port
+default_model: str = "llama3"     # Default model to download
+install_timeout: int = 300        # Installation timeout (seconds)
+max_retries: int = 3              # Network retry attempts
 ```
 
 ### Environment Variables
-
-For Cloudflare domain listing, set your API token:
 ```bash
-export CLOUDFLARE_API_TOKEN="your_api_token_here"
+# For Cloudflare domain listing
+export CLOUDFLARE_API_TOKEN="your_token"
 ./cloudlamma.py --list-domains
 ```
 
 ## Security Features
 
-CloudLamma includes enterprise-grade security features:
-
-- **Input Validation**: All model names are validated to prevent command injection attacks
-- **Secure File Handling**: Uses Python's `tempfile` module for secure temporary file creation
-- **Network Resilience**: Automatic retry logic with exponential backoff for network failures
-- **Error Handling**: Comprehensive exception handling prevents information leakage
-- **Timeout Protection**: All network operations have configurable timeouts
+🔒 **Input validation** prevents command injection  
+🔒 **Secure file handling** with proper temp file management  
+🔒 **Network resilience** with retry logic and timeouts  
+🔒 **Comprehensive error handling** with actionable messages
 
 ## Troubleshooting
 
-### Common Issues
+| Issue | Solution |
+|-------|----------|
+| Permission denied | Run `sudo -v` then retry |
+| Network timeouts | Check connection, use `--verbose` |
+| Ollama unresponsive | CloudLamma auto-handles, or `killall ollama` |
+| Model pull fails | Verify name with `--list-models` |
 
-**"Permission denied" during installation:**
-```bash
-# Ensure you have sudo privileges
-sudo -v
-./cloudlamma.py --yes
-```
-
-**Network timeout errors:**
-```bash
-# Check internet connection and try again
-./cloudlamma.py --check
-./cloudlamma.py --verbose  # For detailed output
-```
-
-**Ollama not responsive:**
-```bash
-# CloudLamma automatically handles service startup
-# If issues persist, manually restart:
-killall ollama
-./cloudlamma.py
-```
-
-**Model pull failures:**
-```bash
-# Verify model name is valid
-./cloudlamma.py --list-models
-./cloudlamma.py --pull llama3  # Use exact model name
-```
-
-### Support
-
-- **Issues**: Report bugs at https://github.com/sho-luv/cloudlamma/issues
-- **Documentation**: See inline help with `./cloudlamma.py --help`
-- **Verbose Output**: Use `-v` flag for detailed debugging information
+**Need help?** Open an issue at https://github.com/sho-luv/cloudlamma/issues
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes with proper error handling and input validation
-4. Add tests if applicable
-5. Submit a pull request
+3. Make your changes
+4. Submit a pull request
+
+Contributions are welcome! Please ensure proper error handling and security practices.
 
 ## License
 
-This project is open source. Please see the repository for license details.
-
-## Acknowledgments
-
-- **Ollama**: For providing an excellent local LLM runtime
-- **Cloudflare**: For secure tunnel infrastructure
-- **Community**: For feedback and contributions
+This project is open source. See the repository for license details.
 
 ---
 
-**Built with security and reliability in mind**
+**Liked the work? Give the repository a ⭐**
+
+Built with ❤️ for the developer community. Supports **Ollama** and **Cloudflare** infrastructure.
