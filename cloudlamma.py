@@ -117,6 +117,24 @@ class OllamaSetup:
             raise ValueError(f"Invalid model name: '{model_name}'. Model names must contain only letters, numbers, dots, dashes, underscores, and colons.")
         return model_name.strip()
 
+    def retry_operation(self, operation, max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0):
+        """Retry an operation with exponential backoff"""
+        for attempt in range(max_retries):
+            try:
+                return operation()
+            except (requests.exceptions.RequestException, subprocess.CalledProcessError) as e:
+                if attempt == max_retries - 1:
+                    raise e
+                
+                wait_time = delay * (backoff ** attempt)
+                self.print_message(
+                    f"Operation failed (attempt {attempt + 1}/{max_retries}), retrying in {wait_time:.1f}s...",
+                    "warn"
+                )
+                time.sleep(wait_time)
+        
+        raise Exception("All retry attempts failed")
+
     def is_installed(self, command: str) -> bool:
         """Check if a command is installed"""
         return shutil.which(command) is not None
@@ -255,8 +273,22 @@ class OllamaSetup:
         )
         return result.returncode == 0
 
+    def is_ollama_responsive(self) -> bool:
+        """Check if Ollama is running and responsive"""
+        if not self.is_ollama_running():
+            return False
+        
+        try:
+            def check_health():
+                response = requests.get(f"http://localhost:{OLLAMA_PORT}/api/tags", timeout=5)
+                return response.status_code == 200
+            
+            return self.retry_operation(check_health, max_retries=2, delay=0.5)
+        except Exception:
+            return False
+
     def start_ollama(self) -> None:
-        """Start the Ollama server"""
+        """Start the Ollama server and wait for it to be responsive"""
         if not self.is_ollama_running():
             self.print_message("Starting Ollama on 0.0.0.0...")
             subprocess.Popen(
@@ -265,8 +297,15 @@ class OllamaSetup:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
-            # Give Ollama a moment to start up
-            time.sleep(2)
+            
+            # Wait for Ollama to be responsive
+            for attempt in range(30):  # 30 seconds timeout
+                if self.is_ollama_responsive():
+                    self.print_message("Ollama is now ready.")
+                    return
+                time.sleep(1)
+            
+            self.print_message("Ollama started but may not be fully responsive yet.", "warn")
 
     def start_temp_tunnel(self) -> None:
         """Start a temporary Cloudflare tunnel to expose Ollama"""
@@ -340,11 +379,14 @@ class OllamaSetup:
         }
         
         try:
-            response = requests.get(
-                "https://api.cloudflare.com/client/v4/zones", 
-                headers=headers,
-                timeout=30
-            )
+            def make_request():
+                return requests.get(
+                    "https://api.cloudflare.com/client/v4/zones", 
+                    headers=headers,
+                    timeout=30
+                )
+            
+            response = self.retry_operation(make_request, max_retries=3)
             
             if response.status_code == 401:
                 self.print_message(
