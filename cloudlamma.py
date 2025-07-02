@@ -124,55 +124,98 @@ class OllamaSetup:
     def install_ollama(self) -> None:
         """Install Ollama using the appropriate package manager"""
         self.print_message("Installing Ollama...")
-        if self.is_installed("brew"):
-            subprocess.run(["brew", "install", "ollama"], check=True)
-        elif self.is_installed("apt"):
-            subprocess.run(["sudo", "apt", "update"], check=True)
+        try:
+            if self.is_installed("brew"):
+                subprocess.run(["brew", "install", "ollama"], check=True, timeout=300)
+            elif self.is_installed("apt"):
+                subprocess.run(["sudo", "apt", "update"], check=True, timeout=120)
+                self.print_message(
+                    "Ollama is not available in the default apt repositories. "
+                    "Installing via install script...",
+                    "warn"
+                )
+                install_script = subprocess.run(
+                    ["curl", "-fsSL", "https://ollama.com/install.sh"],
+                    capture_output=True,
+                    check=True,
+                    timeout=60
+                ).stdout.decode()
+                subprocess.run(["sh"], input=install_script, text=True, check=True, timeout=300)
+            else:
+                self.print_message(
+                    "Unsupported package manager. Please install Ollama manually from https://ollama.com/",
+                    "error"
+                )
+                sys.exit(1)
+        except subprocess.TimeoutExpired:
             self.print_message(
-                "Ollama is not available in the default apt repositories. "
-                "Installing via install script...",
-                "warn"
-            )
-            install_script = subprocess.run(
-                ["curl", "-fsSL", "https://ollama.com/install.sh"],
-                capture_output=True,
-                check=True
-            ).stdout.decode()
-            subprocess.run(["sh"], input=install_script, text=True, check=True)
-        else:
-            self.print_message(
-                "Unsupported package manager. Please install Ollama manually.",
+                "Installation timed out. Please check your internet connection and try again.",
                 "error"
             )
+            sys.exit(1)
+        except subprocess.CalledProcessError as e:
+            self.print_message(
+                f"Installation failed with exit code {e.returncode}. "
+                "Please check your permissions and try again.",
+                "error"
+            )
+            sys.exit(1)
+        except Exception as e:
+            self.print_message(f"Unexpected error during installation: {e}", "error")
             sys.exit(1)
 
     def install_cloudflared(self) -> None:
         """Install cloudflared using the appropriate package manager"""
         self.print_message("Installing cloudflared...")
-        if self.is_installed("brew"):
-            subprocess.run(["brew", "install", "cloudflared"], check=True)
-        elif self.is_installed("apt"):
-            subprocess.run(["sudo", "apt", "update"], check=True)
-            
-            # Determine architecture for correct package
-            arch = subprocess.check_output(["uname", "-m"]).decode().strip()
-            url = self._get_cloudflared_url(arch)
-            if not url:
+        try:
+            if self.is_installed("brew"):
+                subprocess.run(["brew", "install", "cloudflared"], check=True, timeout=300)
+            elif self.is_installed("apt"):
+                subprocess.run(["sudo", "apt", "update"], check=True, timeout=120)
+                
+                # Determine architecture for correct package
+                arch = subprocess.check_output(["uname", "-m"], timeout=10).decode().strip()
+                url = self._get_cloudflared_url(arch)
+                if not url:
+                    self.print_message(
+                        f"Unsupported architecture for automatic cloudflared installation: {arch}. "
+                        "Please install manually from https://github.com/cloudflare/cloudflared/releases",
+                        "error"
+                    )
+                    sys.exit(1)
+
+                subprocess.run(["curl", "-L", "--output", "cloudflared.deb", url], check=True, timeout=120)
+                subprocess.run(["sudo", "dpkg", "-i", "cloudflared.deb"], check=True, timeout=60)
+                self._setup_cloudflared_config()
+            else:
                 self.print_message(
-                    f"Unsupported architecture for automatic cloudflared installation: {arch}",
+                    "Unsupported package manager. Please install cloudflared manually from "
+                    "https://github.com/cloudflare/cloudflared/releases",
                     "error"
                 )
                 sys.exit(1)
-
-            subprocess.run(["curl", "-L", "--output", "cloudflared.deb", url], check=True)
-            subprocess.run(["sudo", "dpkg", "-i", "cloudflared.deb"], check=True)
-            self._setup_cloudflared_config()
-        else:
+        except subprocess.TimeoutExpired:
             self.print_message(
-                "Unsupported package manager. Please install cloudflared manually.",
+                "Installation timed out. Please check your internet connection and try again.",
                 "error"
             )
             sys.exit(1)
+        except subprocess.CalledProcessError as e:
+            self.print_message(
+                f"Installation failed with exit code {e.returncode}. "
+                "Please check your permissions and internet connection.",
+                "error"
+            )
+            sys.exit(1)
+        except Exception as e:
+            self.print_message(f"Unexpected error during installation: {e}", "error")
+            sys.exit(1)
+        finally:
+            # Clean up downloaded file
+            try:
+                os.remove("cloudflared.deb")
+            except OSError:
+                pass
 
     def _get_cloudflared_url(self, arch: str) -> Optional[str]:
         """Get the appropriate cloudflared download URL based on architecture"""
@@ -284,24 +327,69 @@ class OllamaSetup:
         """List domains registered in the Cloudflare account"""
         token = os.environ.get("CLOUDFLARE_API_TOKEN")
         if not token:
-            self.print_message("CLOUDFLARE_API_TOKEN environment variable not set.", "error")
+            self.print_message(
+                "CLOUDFLARE_API_TOKEN environment variable not set. "
+                "Please set it with your Cloudflare API token.",
+                "error"
+            )
             return
 
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
-        response = requests.get("https://api.cloudflare.com/client/v4/zones", headers=headers)
+        
+        try:
+            response = requests.get(
+                "https://api.cloudflare.com/client/v4/zones", 
+                headers=headers,
+                timeout=30
+            )
+            
+            if response.status_code == 401:
+                self.print_message(
+                    "Authentication failed. Please check your CLOUDFLARE_API_TOKEN.",
+                    "error"
+                )
+                return
+            elif response.status_code == 403:
+                self.print_message(
+                    "Access denied. Please ensure your API token has the correct permissions.",
+                    "error"
+                )
+                return
+            elif response.status_code != 200:
+                self.print_message(
+                    f"Failed to fetch domains from Cloudflare (HTTP {response.status_code}).",
+                    "error"
+                )
+                return
 
-        if response.status_code != 200:
-            self.print_message("Failed to fetch domains from Cloudflare.", "error")
-            print(response.text)
-            return
-
-        zones = response.json().get("result", [])
-        self.print_message("Domains under your Cloudflare account:")
-        for zone in zones:
-            print(f" - {zone['name']}")
+            zones = response.json().get("result", [])
+            if not zones:
+                self.print_message("No domains found in your Cloudflare account.")
+                return
+                
+            self.print_message("Domains under your Cloudflare account:")
+            for zone in zones:
+                print(f" - {zone['name']}")
+                
+        except requests.exceptions.Timeout:
+            self.print_message(
+                "Request timed out. Please check your internet connection and try again.",
+                "error"
+            )
+        except requests.exceptions.ConnectionError:
+            self.print_message(
+                "Connection error. Please check your internet connection.",
+                "error"
+            )
+        except requests.exceptions.RequestException as e:
+            self.print_message(f"Request failed: {e}", "error")
+        except KeyError:
+            self.print_message("Unexpected response format from Cloudflare API.", "error")
+        except Exception as e:
+            self.print_message(f"Unexpected error: {e}", "error")
 
     def pull_model(self, model_name: str) -> None:
         """Pull a specific model from Ollama's model hub"""
