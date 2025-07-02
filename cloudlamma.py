@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from typing import List, Optional, Tuple
 
@@ -202,13 +203,13 @@ class OllamaSetup:
         """Start a temporary Cloudflare tunnel to expose Ollama"""
         self.print_message("Starting temporary Cloudflare tunnel...")
         
-        # Create temporary no_config file
-        with open("no_config", "w") as f:
-            pass  # Create empty file
+        # Create secure temporary config file
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.yml') as temp_config:
+            temp_config_path = temp_config.name
             
         try:
             process = subprocess.Popen(
-                ["cloudflared", "tunnel", "--config", "no_config", "--url", f"http://localhost:{OLLAMA_PORT}"],
+                ["cloudflared", "tunnel", "--config", temp_config_path, "--url", f"http://localhost:{OLLAMA_PORT}"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True
@@ -249,7 +250,7 @@ class OllamaSetup:
         finally:
             # Clean up the temporary config file
             try:
-                os.remove("no_config")
+                os.unlink(temp_config_path)
             except OSError:
                 pass  # Ignore if file doesn't exist
 
