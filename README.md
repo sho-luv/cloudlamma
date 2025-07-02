@@ -2,44 +2,44 @@
 
 A robust Python script that simplifies setting up and exposing Ollama with enterprise-grade security features. CloudLamma automatically installs Ollama and cloudflared, manages models, and creates secure tunnels with comprehensive error handling and retry logic.
 
-## ✨ Features
+## Features
 
-### 🔒 **Security & Reliability**
+### Security & Reliability
 * **Input Validation:** Prevents command injection with comprehensive model name validation
 * **Secure File Handling:** Uses secure temporary files instead of predictable file names
 * **Network Resilience:** Automatic retry logic with exponential backoff for network operations
 * **Comprehensive Error Handling:** Detailed error messages with actionable suggestions
 
-### 🚀 **Installation & Management**
+### Installation & Management
 * **Cross-Platform Installation:** Supports brew (macOS) and apt (Ubuntu/Debian) package managers
 * **Smart Service Detection:** Health checks ensure services are responsive before proceeding
 * **Configurable Timeouts:** Customizable timeout settings for different operations
 
-### 🤖 **Model Management**
+### Model Management
 * **Automatic Model Downloads:** Downloads models from the Ollama hub with progress tracking
 * **Model Validation:** Ensures model names are safe and properly formatted
 * **Interactive Model Running:** Run models in interactive chat mode
 * **Model Listing:** View all available models on your local instance
 
-### 🌐 **Cloudflare Integration**
+### Cloudflare Integration
 * **Secure Tunnel Creation:** Creates temporary Cloudflare tunnels with proper cleanup
 * **Domain Management:** List domains in your Cloudflare account (requires API token)
 * **Configurable Endpoints:** Customizable port and service configurations
 
-### ⚙️ **Developer-Friendly**
+### Developer-Friendly
 * **Verbose Mode:** Detailed output for debugging with `-v` flag
 * **Non-Interactive Mode:** `--yes` flag for automated deployments
 * **Status Checking:** Quick health checks for installed services
 * **Centralized Configuration:** Easy customization through configuration dataclass
 
-## 📋 Prerequisites
+## Prerequisites
 
 * **Python 3.7+** with pip
 * **Internet Connection** for downloading Ollama, cloudflared, and models
 * **sudo privileges** for package installation (Linux)
 * **Homebrew** (macOS) or **apt** (Ubuntu/Debian) package manager
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -81,7 +81,7 @@ A robust Python script that simplifies setting up and exposing Ollama with enter
 ./cloudlamma.py --check
 ```
 
-## 📖 Detailed Usage
+## Detailed Usage
 
 ### Command-Line Options
 
@@ -122,7 +122,7 @@ A robust Python script that simplifies setting up and exposing Ollama with enter
 ./cloudlamma.py --list-models
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 CloudLamma uses a centralized configuration system that you can customize by modifying the `Config` dataclass in `cloudlamma.py`:
 
@@ -152,7 +152,7 @@ export CLOUDFLARE_API_TOKEN="your_api_token_here"
 ./cloudlamma.py --list-domains
 ```
 
-## 🔒 Security Features
+## Security Features
 
 CloudLamma includes enterprise-grade security features:
 
@@ -162,7 +162,7 @@ CloudLamma includes enterprise-grade security features:
 - **Error Handling**: Comprehensive exception handling prevents information leakage
 - **Timeout Protection**: All network operations have configurable timeouts
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -201,7 +201,7 @@ killall ollama
 - **Documentation**: See inline help with `./cloudlamma.py --help`
 - **Verbose Output**: Use `-v` flag for detailed debugging information
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -209,11 +209,11 @@ killall ollama
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is open source. Please see the repository for license details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Ollama**: For providing an excellent local LLM runtime
 - **Cloudflare**: For secure tunnel infrastructure
@@ -221,4 +221,4 @@ This project is open source. Please see the repository for license details.
 
 ---
 
-**Built with security and reliability in mind** 🔒✨
+**Built with security and reliability in mind**
